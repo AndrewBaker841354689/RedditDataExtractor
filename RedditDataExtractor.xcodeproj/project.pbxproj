@@ -1,0 +1,72 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXGroup section */
+		C7DA99542E661810009C5E04 = {
+			isa = PBXGroup;
+			children = (
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXProject section */
+		C7DA99552E661810009C5E04 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1640;
+			};
+			buildConfigurationList = C7DA99582E661810009C5E04 /* Build configuration list for PBXProject "RedditDataExtractor" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C7DA99542E661810009C5E04;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		C7DA99592E661810009C5E04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = R3WDX279RU;
+			};
+			name = Debug;
+		};
+		C7DA995A2E661810009C5E04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = R3WDX279RU;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C7DA99582E661810009C5E04 /* Build configuration list for PBXProject "RedditDataExtractor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7DA99592E661810009C5E04 /* Debug */,
+				C7DA995A2E661810009C5E04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C7DA99552E661810009C5E04 /* Project object */;
+}
