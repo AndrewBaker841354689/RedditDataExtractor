@@ -11,9 +11,10 @@
   const downloadImagesCb = document.getElementById("downloadImages");
   const statusEl = document.getElementById("status");
 
-  // Convenience aliases to util helpers if present
-  const normalize = (u) => (window.normalizeUrl ? window.normalizeUrl(u) : (u || ""));
+  // Canonical helpers from util.js (fall back safely if util isn't loaded yet)
+  const normalizeUrl = (u) => (window.normalizeUrl ? window.normalizeUrl(u) : (u || ""));
   const ensureExt = (u, f = "jpg") => (window.ensureExt ? window.ensureExt(u, f) : (u || ""));
+  const isImageUrl = (u) => (window.isImageUrl ? window.isImageUrl(u) : false);
 
   // Ensure we have a CORS-safe downloader even if util.js wasn't loaded first
   const downloadUrl = (typeof window !== 'undefined' && typeof window.downloadUrl === 'function')
@@ -74,10 +75,6 @@
     return s;
   }
 
-  function normalizeUrl(u) {
-    // Reddit preview urls often contain HTML entities
-    return (u || "").replace(/&amp;/g, "&");
-  }
   const fix = (s) => (s || "").replace(/&amp;/g, "&");
 
   // Prefill current tab URL if it's a reddit post
@@ -128,7 +125,7 @@
           if (m.e === "Image") {
             const src = m.s || {};
             const u0 = src.u || src.gif || "";
-            const u = ensureExt(normalize(u0), "jpg");
+            const u = ensureExt(normalizeUrl(u0), "jpg");
             if (u) imageUrls.push(u);
           }
         }
@@ -144,7 +141,7 @@
           const xPrev = fix(x.preview?.images?.[0]?.source?.url); if (xPrev) candidates.push(xPrev);
         }
         for (const c of candidates) {
-          const cu = ensureExt(normalize(c), "jpg");
+          const cu = ensureExt(normalizeUrl(c), "jpg");
           if (isImageUrl(cu)) { imageUrls.push(cu); break; }
         }
       }

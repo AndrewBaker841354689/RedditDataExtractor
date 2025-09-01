@@ -42,8 +42,7 @@ RedditDataExtractor/
 The extension requires the following Chrome permissions:
 - `activeTab` – to detect the current Reddit post URL.
 - `downloads` – to save Markdown files and images directly to your Downloads folder.
-- `scripting` – to execute scraping logic within the page context.
-- `host_permissions` – access to `reddit.com`, `old.reddit.com`, `i.redd.it`, and `preview.redd.it` for fetching posts and media.
+- `host_permissions` – access to `*://*.reddit.com/*` for fetching posts.
 
 ## Notes
 - Comments are fetched via Reddit's public `.json` API endpoints.

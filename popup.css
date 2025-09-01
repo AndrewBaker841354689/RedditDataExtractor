@@ -47,7 +47,23 @@ input[type="text"] {
   box-sizing: border-box;
   min-height: 36px;
 }
+select,
+input[type="number"] {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  min-height: 36px;
+  background: transparent;
+  color: var(--text);
+}
 input[type="text"]:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-color: var(--blue);
+}
+select:focus-visible,
+input[type="number"]:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-color: var(--blue);
@@ -74,6 +90,23 @@ button:disabled {
   cursor: default;
 }
 
+.row.inline label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  cursor: pointer;
+}
+.row.inline input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.help {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 #status {
   margin-top: 8px;
   font-size: 12px;
@@ -92,4 +125,13 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+@media (prefers-contrast: more) {
+  :root { --blue: #0b57d0; }
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline-width: 3px;
+  }
 }

@@ -105,6 +105,40 @@ function buildExtractedMentionsSection(postFields, commentsListing) {
   }
 }
 
+function _domainOf(u) {
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
+function buildDiagnosticsSection(postFields, commentsListing) {
+  try {
+    const baseText = [
+      postFields?.title || '',
+      postFields?.selftext || '',
+      postFields?.url || '',
+    ].join('\n');
+    const commentsText = _collectCommentText(commentsListing);
+    const { urls } = _extractMentions(baseText + '\n' + commentsText);
+    const domains = Array.from(new Set(urls.map(_domainOf).filter(Boolean)));
+    const { comments, morePlaceholders } = countComments(commentsListing);
+
+    const diag = (typeof window !== 'undefined' && window.__lastFetchDiagnostics && window.__lastFetchDiagnostics.comments) ? window.__lastFetchDiagnostics.comments : null;
+
+    const lines = ['## Fetch Diagnostics', ''];
+    lines.push(`- Comments processed: ${comments}`);
+    lines.push(`- "More replies" placeholders: ${morePlaceholders}`);
+    lines.push(`- Unique link domains: ${domains.length}${domains.length ? ' — ' + domains.slice(0, 8).join(', ') + (domains.length > 8 ? ', …' : '') : ''}`);
+    if (diag) {
+      lines.push(`- Comments endpoint: ${diag.url || '(unknown)'}`);
+      lines.push(`- HTTP status: ${diag.status}${diag.retried ? ' (retried)' : ''}`);
+      lines.push(`- OK: ${diag.ok ? 'yes' : 'no'}`);
+    }
+    lines.push('');
+    return lines.join('\n');
+  } catch {
+    return '';
+  }
+}
+
 // =========================
 // Comments fetching & MD
 // =========================
@@ -117,6 +151,7 @@ function buildExtractedMentionsSection(postFields, commentsListing) {
  */
 async function fetchRedditComments(permalink, opts = {}) {
   try {
+    let _diag = { url: '', status: 0, retried: false, ok: false };
     if (!permalink) return null;
     const sort = opts.sort || 'top';
     const limit = Math.min(Math.max(opts.limit || 100, 1), 500);
@@ -126,18 +161,31 @@ async function fetchRedditComments(permalink, opts = {}) {
       depth: "2"
     }).toString();
     const url = `https://www.reddit.com${permalink}.json?${params}`;
+    _diag.url = url;
     let res = await fetch(url, { credentials: 'omit' });
+    _diag.status = res.status;
     if (res.status === 429) {
+      _diag.retried = true;
       // minimal backoff & single retry
       await new Promise(r => setTimeout(r, 1200));
       res = await fetch(url, { credentials: 'omit' });
+      _diag.status = res.status;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
+    _diag.ok = true;
+    if (typeof window !== 'undefined') {
+      window.__lastFetchDiagnostics = window.__lastFetchDiagnostics || {};
+      window.__lastFetchDiagnostics.comments = _diag;
+    }
     // Response is [postListing, commentsListing]
     return Array.isArray(json) && json[1] ? json[1] : null;
   } catch (e) {
     console.error('fetchRedditComments failed:', e);
+    if (typeof window !== 'undefined') {
+      window.__lastFetchDiagnostics = window.__lastFetchDiagnostics || {};
+      window.__lastFetchDiagnostics.comments = { url: '', status: 0, retried: false, ok: false };
+    }
     return null;
   }
 }
@@ -194,6 +242,31 @@ function buildCommentsMarkdown(commentsListing) {
   return lines.join('\n');
 }
 
+function countComments(commentsListing) {
+  let count = 0;
+  let more = 0;
+  try {
+    const walk = (node) => {
+      if (!node) return;
+      if (node.kind === 't1') {
+        count++;
+        const data = node.data || {};
+        if (data.replies && typeof data.replies === 'object' && data.replies.data) {
+          (data.replies.data.children || []).forEach(walk);
+        }
+      } else if (node.kind === 'more') {
+        more += Array.isArray(node.data?.children) ? node.data.children.length : 0;
+      } else if (node.data && Array.isArray(node.data.children)) {
+        node.data.children.forEach(walk);
+      }
+    };
+    if (commentsListing && commentsListing.data && Array.isArray(commentsListing.data.children)) {
+      commentsListing.data.children.forEach(walk);
+    }
+  } catch {}
+  return { comments: count, morePlaceholders: more };
+}
+
 /**
  * Helper: build the original post markdown and append a Comments section if available.
  * Does not change existing call-sites that use `buildMarkdown`.
@@ -205,10 +278,12 @@ function buildMarkdownWithComments(postFields, commentsListing) {
   const base = buildMarkdown(postFields);
   const commentsMd = buildCommentsMarkdown(commentsListing);
   const mentions = buildExtractedMentionsSection(postFields, commentsListing);
-  if (!commentsMd && !mentions) return base;
+  const diagnostics = buildDiagnosticsSection(postFields, commentsListing);
+  if (!commentsMd && !mentions && !diagnostics) return base;
   let out = base;
   if (mentions) out += '\n' + mentions + '\n';
   if (commentsMd) out += '\n## Comments\n\n' + commentsMd + '\n';
+  if (diagnostics) out += '\n' + diagnostics + '\n';
   return out;
 }
 
@@ -346,4 +421,9 @@ if (typeof window !== 'undefined') {
   window.sanitizeFilename = sanitizeFilename;
   window.ensureExt = ensureExt;
   window.buildExtractedMentionsSection = buildExtractedMentionsSection;
+  // NEW: expose canonical helpers so popup.js doesn't redefine them
+  window.isImageUrl = isImageUrl;
+  window.normalizeUrl = normalizeUrl;
+  window.buildDiagnosticsSection = buildDiagnosticsSection;
+  window.countComments = countComments;
 }
