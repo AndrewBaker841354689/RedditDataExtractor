@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Reddit → Markdown</title>
+</head>
+  <link rel="stylesheet" href="popup.css" />
+  <script src="util.js"></script>
+</head>
+</head>
+<body>
+  <h1>Reddit → Markdown</h1>
+
+  <div class="row">
+    <label>Post URL</label>
+    <input id="url" type="text" placeholder="https://www.reddit.com/r/.../comments/..." />
+  </div>
+
+  <div class="row inline">
+    <label><input id="downloadImages" type="checkbox" checked /> Download images</label>
+  </div>
+
+  <div class="row">
+    <button id="scrapeBtn">Scrape this post</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
