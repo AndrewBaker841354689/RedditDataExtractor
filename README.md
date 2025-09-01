@@ -6,8 +6,12 @@ Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit p
 ## Features
 - Extracts the **title, subreddit, author, timestamp, body text, and post URL**.
 - Saves post content into a **Markdown file** for easy readability and compatibility with tools like Obsidian, Notion, or any text editor.
+- Includes **YAML front-matter metadata** in the Markdown file for structured data representation.
 - Downloads images from posts, including single-image posts and multi-image galleries.
 - Includes **comment scraping**, appending them to the Markdown file under a `## Comments` section.
+- Adds a structured `## Extracted Mentions` section listing links, file paths, configs, and flags found in the post.
+- Provides a `## Fetch Diagnostics` section summarizing comments processed, placeholders encountered, domains accessed, and fetch statuses.
+- Features a “Copy Prompt” button that copies ChatGPT instruction templates to the clipboard for further processing.
 - Works with both new Reddit (`reddit.com`) and Old Reddit (`old.reddit.com`).
 
 ## Installation
@@ -21,11 +25,10 @@ Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit p
 1. Navigate to a Reddit post in your browser.
 2. Click the **Reddit → Markdown** extension icon in your toolbar.
 3. The popup will auto-fill with the current Reddit post URL if you are on a valid post page.
-4. Click **Scrape this post**:
-   - A `.md` file will be generated containing the post title, metadata, body, and comments.
-   - If the "Download images" checkbox is enabled, all images will also be downloaded into a subfolder.
-
-5. Check your **Downloads** folder for the saved files.
+4. Use the **Scrape this post** button to generate a `.md` file containing the post title, metadata, body, comments, extracted mentions, and fetch diagnostics.
+5. Use the **Download images** checkbox to enable downloading all images into a subfolder alongside the Markdown file.
+6. Use the **Copy Prompt** button to copy a ChatGPT instruction template to your clipboard for further interaction or processing.
+7. Check your **Downloads** folder for the saved files.
 
 ## File Structure
 ```
@@ -35,6 +38,7 @@ RedditDataExtractor/
 ├── popup.js             # Popup logic and scraper
 ├── util.js              # Utility functions for scraping & saving
 ├── popup.css            # Styling for popup window
+├── PROMPT.md            # Instruction template for ChatGPT
 └── icons/               # Extension icons (16x16, 48x48, 128x128)
 ```
 
