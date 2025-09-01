@@ -1,7 +1,7 @@
 # Reddit Data Extractor (Chrome Extension)
 
 ## Overview
-Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit post and export it as a Markdown (.md) file. Along with the text and metadata, the extension can also download associated images from the post. This makes it easy to archive Reddit discussions in a clean, portable format.
+Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit post and export it as a Markdown (.md) file. Along with the text and metadata, the extension can also download associated images from the post. This makes it easy to archive Reddit discussions in a clean, portable format that can be easily used by a LLM.
 
 ## Features
 - Extracts the **title, subreddit, author, timestamp, body text, and post URL**.
