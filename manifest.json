@@ -4,7 +4,12 @@
   "version": "1.0.0",
   "description": "Scrape a Reddit post to Markdown and download images.",
   "permissions": ["downloads", "activeTab", "scripting"],
-  "host_permissions": ["https://www.reddit.com/*", "https://old.reddit.com/*"],
+  "host_permissions": [
+    "https://www.reddit.com/*",
+    "https://old.reddit.com/*",
+    "https://preview.redd.it/*",
+    "https://i.redd.it/*",
+    "https://external-preview.redd.it/*"],
   "action": {
     "default_title": "Reddit Data Extractor",
     "default_popup": "popup.html",
