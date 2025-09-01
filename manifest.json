@@ -1,21 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Reddit Post → Markdown (with images)",
+  "name": "Reddit Data Extractor",
   "version": "1.0.0",
-  "description": "Scrape the current Reddit post into a Markdown file and optionally download images.",
-  "action": { "default_popup": "popup.html" },
-  "permissions": ["activeTab", "downloads", "storage", "tabs"],
-  "host_permissions": [
-    "https://www.reddit.com/*",
-    "https://old.reddit.com/*",
-    "https://reddit.com/*",
-    "https://i.redd.it/*",
-    "https://preview.redd.it/*",
-    "https://i.imgur.com/*"
-  ],
+  "description": "Scrape a Reddit post to Markdown and download images.",
+  "permissions": ["downloads", "activeTab", "scripting"],
+  "host_permissions": ["https://www.reddit.com/*", "https://old.reddit.com/*"],
+  "action": {
+    "default_title": "Reddit Data Extractor",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16x16.png",
+      "48": "icons/icon48x48.png",
+      "128": "icons/icon128x128.png"
+    }
+  },
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/icon16x16.png",
+    "48": "icons/icon48x48.png",
+    "128": "icons/icon128x128.png"
   }
 }

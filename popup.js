@@ -120,8 +120,8 @@
         }
       }
 
-      // --- Build markdown (util.js provides buildMarkdown) ---
-      const md = buildMarkdown({
+      // --- Build markdown with comments (util.js provides buildFullMarkdown) ---
+      const md = await buildFullMarkdown({
         title,
         subreddit,
         author,
@@ -130,7 +130,7 @@
         url: originalUrl,
         selftext,
         imageUrls
-      });
+      }, { sort: 'top', limit: 100 });
 
       // --- Save markdown (use data URL helper for reliability) ---
       const base = sanitizeFilename(`${title}_${post.id}`.replace(/_+$/, ""));
