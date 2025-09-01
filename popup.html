@@ -1,17 +1,19 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Reddit → Markdown</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="popup.css" />
+  <!-- Load util helpers before popup logic -->
   <script src="util.js"></script>
 </head>
 <body>
-  <h1>Reddit → Markdown</h1>
+  <h3>Reddit → Markdown</h3>
 
   <div class="row">
-    <label>Post URL</label>
-    <input id="url" type="text" placeholder="https://www.reddit.com/r/.../comments/..." />
+    <label for="url">Post URL</label>
+    <input id="url" type="text" placeholder="https://www.reddit.com/r/.../comments/..." autocomplete="off" />
   </div>
 
   <div class="row inline">
@@ -19,10 +21,10 @@
   </div>
 
   <div class="row">
-    <button id="scrapeBtn">Scrape this post</button>
+    <button id="scrapeBtn" type="button">Scrape this post</button>
   </div>
 
-  <div id="status"></div>
+  <div id="status" role="status" aria-live="polite"></div>
 
   <script src="popup.js"></script>
 </body>

@@ -8,11 +8,101 @@
 // Small helpers used by popup.js
 
 function sanitizeFilename(s, maxLen = 80) {
-  const cleaned = s
+  let cleaned = s
     .trim()
     .replace(/[^\w\s.-]/g, "")
     .replace(/\s+/g, "_");
+  // Remove any path separators
+  cleaned = cleaned.replace(/[\/\\]/g, "_");
+  // Disallow leading dots (hidden files) and trailing dots/spaces (Windows)
+  cleaned = cleaned.replace(/^\.+/, "").replace(/[.\s]+$/, "");
+  // Avoid Windows reserved names
+  const reserved = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+  if (reserved.test(cleaned)) cleaned = `_${cleaned}_`;
   return (cleaned || "reddit_post").slice(0, maxLen);
+}
+
+// Simple YAML value escaper (uses JSON stringification for safety)
+function yamlVal(v) {
+  if (v === undefined || v === null) return '""';
+  return JSON.stringify(String(v));
+}
+
+// Collect plain text from a Reddit comments Listing (json[1])
+function _collectCommentText(commentsListing) {
+  const out = [];
+  try {
+    const walk = (node) => {
+      if (!node || !node.kind) return;
+      if (node.kind === 't1' && node.data) {
+        const body = (node.data.body || '').toString();
+        if (body.trim()) out.push(body);
+        // Recurse
+        const replies = node.data.replies;
+        if (replies && typeof replies === 'object' && replies.data && Array.isArray(replies.data.children)) {
+          replies.data.children.forEach(walk);
+        }
+      } else if (node.data && Array.isArray(node.data.children)) {
+        node.data.children.forEach(walk);
+      }
+    };
+    if (commentsListing && commentsListing.data && Array.isArray(commentsListing.data.children)) {
+      commentsListing.data.children.forEach(walk);
+    }
+  } catch {}
+  return out.join('\n');
+}
+
+// Extract URLs, file paths, config key=val pairs, and CLI flags from a blob of text
+function _extractMentions(text) {
+  const t = String(text || '');
+  const urls = Array.from(new Set((t.match(/https?:\/\/[^\s)]+/g) || []).slice(0, 50)));
+  const winPaths = Array.from(new Set((t.match(/[A-Za-z]:\\[^\s"']+/g) || []).slice(0, 50)));
+  const nixPaths = Array.from(new Set((t.match(/\/(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/g) || []).slice(0, 50)));
+  const flags = Array.from(new Set((t.match(/--[A-Za-z0-9][A-Za-z0-9-]*/g) || []).slice(0, 50)));
+  const kvPairs = Array.from(new Set((t.match(/\b([A-Za-z0-9_.-]{2,})\s*=\s*([^\s,;]+)/g) || []).slice(0, 50)));
+  return { urls, paths: [...winPaths, ...nixPaths].slice(0, 50), flags, kvPairs };
+}
+
+// Build a Markdown section summarizing extracted mentions
+function buildExtractedMentionsSection(postFields, commentsListing) {
+  try {
+    const baseText = [
+      postFields?.title || '',
+      postFields?.selftext || '',
+      postFields?.url || '',
+    ].join('\n');
+    const commentsText = _collectCommentText(commentsListing);
+    const { urls, paths, flags, kvPairs } = _extractMentions(baseText + '\n' + commentsText);
+
+    const lines = [];
+    if (urls.length || paths.length || flags.length || kvPairs.length) {
+      lines.push('## Extracted Mentions', '');
+      if (urls.length) {
+        lines.push('**Links**');
+        urls.slice(0, 20).forEach(u => lines.push(`- ${u}`));
+        lines.push('');
+      }
+      if (paths.length) {
+        lines.push('**Files / Paths**');
+        paths.slice(0, 20).forEach(p => lines.push(`- ${p}`));
+        lines.push('');
+      }
+      if (kvPairs.length) {
+        lines.push('**Config key=value**');
+        kvPairs.slice(0, 20).forEach(kv => lines.push(`- ${kv}`));
+        lines.push('');
+      }
+      if (flags.length) {
+        lines.push('**CLI Flags**');
+        flags.slice(0, 20).forEach(f => lines.push(`- ${f}`));
+        lines.push('');
+      }
+    }
+    return lines.join('\n');
+  } catch {
+    return '';
+  }
 }
 
 // =========================
@@ -30,8 +120,18 @@ async function fetchRedditComments(permalink, opts = {}) {
     if (!permalink) return null;
     const sort = opts.sort || 'top';
     const limit = Math.min(Math.max(opts.limit || 100, 1), 500);
-    const url = `https://www.reddit.com${permalink}.json?sort=${encodeURIComponent(sort)}&limit=${limit}`;
-    const res = await fetch(url, { credentials: 'omit' });
+    const params = new URLSearchParams({
+      sort,
+      limit: String(limit),
+      depth: "2"
+    }).toString();
+    const url = `https://www.reddit.com${permalink}.json?${params}`;
+    let res = await fetch(url, { credentials: 'omit' });
+    if (res.status === 429) {
+      // minimal backoff & single retry
+      await new Promise(r => setTimeout(r, 1200));
+      res = await fetch(url, { credentials: 'omit' });
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     // Response is [postListing, commentsListing]
@@ -63,7 +163,7 @@ function buildCommentsMarkdown(commentsListing) {
       const author = data.author || '[deleted]';
       const score = typeof data.score === 'number' ? data.score : '?';
       const created = typeof data.created_utc === 'number' ? fmtUtc(data.created_utc) : 'unknown';
-      const body = (data.body || '').trim();
+      const body = (data.body || '').trim().replace(/```/g, "\\`\\`\\`");
       const indent = '  '.repeat(Math.max(depth, 0));
 
       // Header line for the comment
@@ -104,15 +204,12 @@ function buildCommentsMarkdown(commentsListing) {
 function buildMarkdownWithComments(postFields, commentsListing) {
   const base = buildMarkdown(postFields);
   const commentsMd = buildCommentsMarkdown(commentsListing);
-  if (!commentsMd) return base;
-  return base + '\n## Comments\n\n' + commentsMd + '\n';
-}
-
-// Expose helpers to popup.js/content scripts loaded in the same context
-if (typeof window !== 'undefined') {
-  window.fetchRedditComments = fetchRedditComments;
-  window.buildCommentsMarkdown = buildCommentsMarkdown;
-  window.buildMarkdownWithComments = buildMarkdownWithComments;
+  const mentions = buildExtractedMentionsSection(postFields, commentsListing);
+  if (!commentsMd && !mentions) return base;
+  let out = base;
+  if (mentions) out += '\n' + mentions + '\n';
+  if (commentsMd) out += '\n## Comments\n\n' + commentsMd + '\n';
+  return out;
 }
 
 function isImageUrl(url) {
@@ -130,9 +227,23 @@ function isImageUrl(url) {
   );
 }
 
+function ensureExt(url, fallback = "jpg") {
+  try {
+    const p = new URL(url).pathname;
+    return /\.[a-z0-9]{2,5}$/i.test(p) ? url : `${url}.${fallback}`;
+  } catch {
+    return url;
+  }
+}
+
 function normalizeUrl(url) {
   if (!url) return url;
-  return url.toLowerCase().endsWith(".gifv") ? url.slice(0, -5) + ".gif" : url;
+  const lower = url.toLowerCase();
+  if (lower.endsWith(".gifv")) {
+    if (lower.includes("imgur.com")) return url.slice(0, -5) + ".mp4";
+    return url.slice(0, -5) + ".gif";
+  }
+  return url;
 }
 
 function fmtUtc(ts) {
@@ -143,13 +254,30 @@ function fmtUtc(ts) {
   }
 }
 
-function buildMarkdown({ title, subreddit, author, createdUtc, permalink, url, selftext, imageUrls }) {
+function buildMarkdown({ title, subreddit, author, createdUtc, permalink, url, selftext, imageUrls, id }) {
+  const createdStr = typeof createdUtc === 'number' ? fmtUtc(createdUtc) : (createdUtc || 'unknown');
+  const createdIso = (typeof createdUtc === 'number') ? new Date(createdUtc * 1000).toISOString() : (createdUtc || '');
+  const yaml = [
+    '---',
+    `title: ${yamlVal(title || '')}`,
+    `subreddit: ${yamlVal(subreddit ? `r/${subreddit}` : '?')}`,
+    `author: ${yamlVal(author ? `u/${author}` : '[deleted]')}`,
+    `created_utc: ${yamlVal(typeof createdUtc === 'number' ? Math.floor(createdUtc) : (createdUtc || 'unknown'))}`,
+    `created_iso: ${yamlVal(createdIso)}`,
+    `permalink: ${yamlVal(`https://www.reddit.com${permalink || ''}`)}`,
+    `original_url: ${yamlVal(url || '')}`,
+    (id ? `post_id: ${yamlVal(id)}` : null),
+    '---',
+    ''
+  ].filter(Boolean).join('\n');
+
   const lines = [
+    yaml,
     `# ${title || ""}`,
     "",
     `- Subreddit: r/${subreddit || "?"}`,
     `- Author: u/${author || "[deleted]"}`,
-    `- Created: ${createdUtc}`,
+    `- Created: ${createdStr}`,
     `- Permalink: https://www.reddit.com${permalink || ""}`,
     `- Original URL: ${url || ""}`,
     "",
@@ -166,6 +294,9 @@ function buildMarkdown({ title, subreddit, author, createdUtc, permalink, url, s
     imageUrls.forEach((u, i) => lines.push(`${i + 1}. ${u}`));
     lines.push("");
   }
+
+  // Optional section for downstream LLMs to summarize/extract key points
+  lines.push("## Extracted Summary", "", "_(Add notes or let an LLM summarize key points here.)_", "");
 
   return lines.join("\n");
 }
@@ -212,4 +343,7 @@ if (typeof window !== 'undefined') {
   window.buildCommentsMarkdown = buildCommentsMarkdown;
   window.buildMarkdownWithComments = buildMarkdownWithComments;
   window.buildFullMarkdown = buildFullMarkdown;
+  window.sanitizeFilename = sanitizeFilename;
+  window.ensureExt = ensureExt;
+  window.buildExtractedMentionsSection = buildExtractedMentionsSection;
 }
