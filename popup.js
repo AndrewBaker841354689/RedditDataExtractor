@@ -146,7 +146,7 @@
             catch { return "jpg"; }
           })();
           const fname = `${base}_images/image_${String(idx).padStart(2, "0")}.${ext}`;
-          await downloadUrl(fname, u);
+          await downloadBlob(fname, await (await fetch(u)).blob());
           idx++;
         }
       }
