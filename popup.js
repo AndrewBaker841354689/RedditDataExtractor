@@ -10,6 +10,9 @@
   const scrapeBtn = document.getElementById("scrapeBtn");
   const downloadImagesCb = document.getElementById("downloadImages");
   const statusEl = document.getElementById("status");
+  const sortSel = document.getElementById("sort");          // optional
+  const limitInput = document.getElementById("limit");       // optional
+  const copyPromptBtn = document.getElementById("copy-prompt"); // optional
 
   // Canonical helpers from util.js (fall back safely if util isn't loaded yet)
   const normalizeUrl = (u) => (window.normalizeUrl ? window.normalizeUrl(u) : (u || ""));
@@ -83,6 +86,48 @@
     if (tab?.url && isRedditPostUrl(tab.url)) urlInput.value = tab.url;
   } catch {}
 
+  // Copy PROMPT.md to clipboard
+  async function copyPromptToClipboard() {
+    try {
+      const url = chrome.runtime.getURL('PROMPT.md');
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load PROMPT.md (${res.status})`);
+      const text = await res.text();
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+
+      setStatus('Prompt copied to clipboard.', 'success');
+    } catch (err) {
+      console.error(err);
+      setStatus(`Could not copy prompt: ${err.message}`, 'error');
+    }
+  }
+
+  if (copyPromptBtn) {
+    copyPromptBtn.addEventListener('click', copyPromptToClipboard);
+  }
+
+  function readSortAndLimit() {
+    const sort = (sortSel && typeof sortSel.value === 'string' && sortSel.value.trim()) ? sortSel.value.trim() : 'top';
+    let limit = 100;
+    if (limitInput && limitInput.value !== '') {
+      const n = Number(limitInput.value);
+      if (Number.isFinite(n)) {
+        limit = Math.max(1, Math.min(500, Math.floor(n)));
+      }
+    }
+    return { sort, limit };
+  }
+
   async function scrape() {
     let postUrl = canonicalPostUrl(urlInput.value.trim());
     if (!postUrl || !isRedditPostUrl(postUrl)) {
@@ -146,6 +191,9 @@
         }
       }
 
+      // Read UI options (with safe defaults if controls are not present)
+      const { sort, limit } = readSortAndLimit();
+
       // Build markdown with comments using util.js helper exposed on window
       const md = await window.buildFullMarkdown({
         title,
@@ -157,7 +205,7 @@
         selftext,
         imageUrls,
         id: post.id
-      }, { sort: 'top', limit: 100 });
+      }, { sort, limit });
 
       const base = window.sanitizeFilename(`${title}_${post.id}`.replace(/_+$/, ""));
       await saveTextFile(`${base}.md`, md);
