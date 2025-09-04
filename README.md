@@ -60,3 +60,8 @@ The extension requires the following Chrome permissions:
 
 ---
 Enjoy archiving Reddit posts with **Reddit Data Extractor**!
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).  
+You are free to use, modify, and distribute this software, provided that the copyright notice is included in copies or substantial portions of the software.
