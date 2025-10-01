@@ -12,6 +12,7 @@
   const statusEl = document.getElementById("status");
   const sortSel = document.getElementById("sort");          // optional
   const limitInput = document.getElementById("limit");       // optional
+  const depthInput = document.getElementById("depth");       // optional
   const copyPromptBtn = document.getElementById("copy-prompt"); // optional
 
   // Canonical helpers from util.js (fall back safely if util isn't loaded yet)
@@ -116,7 +117,7 @@
     copyPromptBtn.addEventListener('click', copyPromptToClipboard);
   }
 
-  function readSortAndLimit() {
+  function readSortLimitDepth() {
     const sort = (sortSel && typeof sortSel.value === 'string' && sortSel.value.trim()) ? sortSel.value.trim() : 'top';
     let limit = 100;
     if (limitInput && limitInput.value !== '') {
@@ -125,7 +126,14 @@
         limit = Math.max(1, Math.min(500, Math.floor(n)));
       }
     }
-    return { sort, limit };
+    let depth = 5; // reasonable default for replies depth
+    if (depthInput && depthInput.value !== '') {
+      const d = Number(depthInput.value);
+      if (Number.isFinite(d)) {
+        depth = Math.max(1, Math.min(10, Math.floor(d)));
+      }
+    }
+    return { sort, limit, depth };
   }
 
   async function scrape() {
@@ -139,7 +147,9 @@
     setStatus("Fetching JSON…");
 
     try {
-      const jsonUrl = postUrl + ".json";
+      const jsonUrl = (postUrl.endsWith("/"))
+        ? postUrl.slice(0, -1) + ".json"
+        : postUrl + ".json";
       let data;
       let resp = await fetch(jsonUrl, { credentials: "omit" });
       if (resp.status === 429) {
@@ -192,7 +202,7 @@
       }
 
       // Read UI options (with safe defaults if controls are not present)
-      const { sort, limit } = readSortAndLimit();
+      const { sort, limit, depth } = readSortLimitDepth();
 
       // Build markdown with comments using util.js helper exposed on window
       const md = await window.buildFullMarkdown({
@@ -205,7 +215,7 @@
         selftext,
         imageUrls,
         id: post.id
-      }, { sort, limit });
+      }, { sort, limit, depth });
 
       const base = window.sanitizeFilename(`${title}_${post.id}`.replace(/_+$/, ""));
       await saveTextFile(`${base}.md`, md);

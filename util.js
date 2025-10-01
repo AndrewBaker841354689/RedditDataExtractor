@@ -8,23 +8,31 @@
 // Small helpers used by popup.js
 
 function sanitizeFilename(s, maxLen = 80) {
-  let cleaned = s
+  let cleaned = String(s ?? "")
     .trim()
-    .replace(/[^\w\s.-]/g, "")
-    .replace(/\s+/g, "_");
-  // Remove any path separators
-  cleaned = cleaned.replace(/[\/\\]/g, "_");
-  // Disallow leading dots (hidden files) and trailing dots/spaces (Windows)
-  cleaned = cleaned.replace(/^\.+/, "").replace(/[.\s]+$/, "");
+    // remove characters invalid on Windows/macOS filesystems and control chars
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
+    // normalize unicode (compatibility) to fold visually-similar forms
+    .normalize('NFKC')
+    // collapse whitespace to underscores
+    .replace(/\s+/g, "_")
+    // disallow leading dots (hidden files) and trailing dots/spaces/underscores
+    .replace(/^\.+/, "")
+    .replace(/[._\s]+$/g, "");
   // Avoid Windows reserved names
   const reserved = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
   if (reserved.test(cleaned)) cleaned = `_${cleaned}_`;
-  return (cleaned || "reddit_post").slice(0, maxLen);
+  if (!cleaned) cleaned = "reddit_post";
+  if (cleaned.length > maxLen) cleaned = cleaned.slice(0, maxLen);
+  return cleaned;
 }
 
 // Simple YAML value escaper (uses JSON stringification for safety)
 function yamlVal(v) {
   if (v === undefined || v === null) return '""';
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  // Quote and escape strings safely
   return JSON.stringify(String(v));
 }
 
@@ -146,7 +154,7 @@ function buildDiagnosticsSection(postFields, commentsListing) {
 /**
  * Fetch comments JSON for a post via the public Reddit .json endpoint.
  * @param {string} permalink e.g., "/r/foo/comments/abcd12/title/"
- * @param {{sort?: 'top'|'new'|'best'|'confidence', limit?: number}} opts
+ * @param {{sort?: 'top'|'new'|'best'|'confidence', limit?: number, depth?: number}} opts
  * @returns {Promise<object|null>} The comments Listing (array index 1 of the response) or null on failure
  */
 async function fetchRedditComments(permalink, opts = {}) {
@@ -154,11 +162,13 @@ async function fetchRedditComments(permalink, opts = {}) {
     let _diag = { url: '', status: 0, retried: false, ok: false };
     if (!permalink) return null;
     const sort = opts.sort || 'top';
-    const limit = Math.min(Math.max(opts.limit || 100, 1), 500);
+    const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500); // top-level only
+    const depth = Math.min(Math.max(opts.depth ?? 5, 1), 10);   // replies depth, default 5
     const params = new URLSearchParams({
       sort,
       limit: String(limit),
-      depth: "2"
+      depth: String(depth),
+      raw_json: "1"
     }).toString();
     const url = `https://www.reddit.com${permalink}.json?${params}`;
     _diag.url = url;
@@ -289,17 +299,14 @@ function buildMarkdownWithComments(postFields, commentsListing) {
 
 function isImageUrl(url) {
   if (!url) return false;
-  const u = url.toLowerCase();
-  return (
-    u.endsWith(".jpg") ||
-    u.endsWith(".jpeg") ||
-    u.endsWith(".png") ||
-    u.endsWith(".gif") ||
-    u.endsWith(".webp") ||
-    u.includes("i.redd.it") ||
-    u.includes("preview.redd.it") ||
-    u.includes("i.imgur.com")
-  );
+  const u = String(url).toLowerCase();
+  // Known image suffixes
+  if (/(\.|%2e)(jpg|jpeg|png|gif|webp)(\?|#|$)/i.test(u)) return true;
+  // Allow extension-less originals on i.redd.it (often no ext)
+  if (/^https?:\/\/i\.redd\.it\/[a-z0-9]+$/i.test(u)) return true;
+  // preview.redd.it often specifies format/size via query params
+  if (u.includes('preview.redd.it') && /[?&](format|width|height)=/i.test(u)) return true;
+  return false;
 }
 
 function ensureExt(url, fallback = "jpg") {

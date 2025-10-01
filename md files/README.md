@@ -9,6 +9,7 @@ Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit p
 - Includes **YAML front-matter metadata** in the Markdown file for structured data representation.
 - Downloads images from posts, including single-image posts and multi-image galleries.
 - Includes **comment scraping**, appending them to the Markdown file under a `## Comments` section.
+- User can configure **comment sort order, limit (up to 500 top-level), and reply depth (1–10 levels)** directly from the popup UI.
 - Adds a structured `## Extracted Mentions` section listing links, file paths, configs, and flags found in the post.
 - Provides a `## Fetch Diagnostics` section summarizing comments processed, placeholders encountered, domains accessed, and fetch statuses.
 - Features a “Copy Prompt” button that copies ChatGPT instruction templates to the clipboard for further processing.
@@ -27,8 +28,9 @@ Reddit Data Extractor is a Chrome extension that allows you to scrape a Reddit p
 3. The popup will auto-fill with the current Reddit post URL if you are on a valid post page.
 4. Use the **Scrape this post** button to generate a `.md` file containing the post title, metadata, body, comments, extracted mentions, and fetch diagnostics.
 5. Use the **Download images** checkbox to enable downloading all images into a subfolder alongside the Markdown file.
-6. Use the **Copy Prompt** button to copy a ChatGPT instruction template to your clipboard for further interaction or processing.
-7. Check your **Downloads** folder for the saved files.
+6. Adjust the **Sort, Limit, and Depth** controls to customize how many comments and reply levels are fetched (defaults: sort=top, limit=100, depth=5).
+7. Use the **Copy Prompt** button to copy a ChatGPT instruction template to your clipboard for further interaction or processing.
+8. Check your **Downloads** folder for the saved files.
 
 ## File Structure
 ```
@@ -54,8 +56,6 @@ The extension requires the following Chrome permissions:
 - Markdown is generated in a clean format, preserving nested comment structure as bullet lists.
 
 ## Future Improvements
-- Add options for choosing comment sort order (top, new, best).
-- Allow user to set maximum comment depth or limit.
 - Support video downloads from `v.redd.it`.
 
 ---

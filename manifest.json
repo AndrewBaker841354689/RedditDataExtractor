@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Reddit Data Extractor",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "Scrape a Reddit post to Markdown and download images.",
   "permissions": ["downloads", "activeTab"],
   "host_permissions": ["*://*.reddit.com/*"],
