@@ -5,6 +5,8 @@
   --border: #c9c9c9;
   --text: #111;
   --muted: #555;
+  --radius: 10px;
+  --panel: #f7f7f8;
   color-scheme: light dark;
 }
 
@@ -13,20 +15,30 @@
     --border: #4b4b4b;
     --text: #eaeaea;
     --muted: #d0d0d0;
+    --panel: #1f1f21;
   }
 }
 
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   margin: 14px;
-  max-width: 360px;
-  width: min(90vw, 360px);
+  min-width: 360px;
+  max-width: 420px;
+  width: min(95vw, 420px);
   box-sizing: border-box;
   color: var(--text);
+  background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--panel) 90%, black 5%));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
 }
 h3 {
-  font-size: 16px;
-  margin: 0 0 10px;
+  font-size: 18px;
+  margin: 0 0 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
 }
 .row {
   margin: 8px 0;
@@ -38,49 +50,72 @@ h3 {
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap; /* allow controls to wrap onto next line */
+  row-gap: 4px;
 }
+.row.inline input[type="number"] {
+  width: 80px;
+  text-align: center;
+}
+ 
+ .row.inline > label {
+   font-size: 12px;
+   font-weight: 500;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+   color: var(--muted);
+ }
 label { color: var(--muted); }
-input[type="text"] {
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-sizing: border-box;
-  min-height: 36px;
-}
+input[type="text"],
 select,
 input[type="number"] {
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-sizing: border-box;
-  min-height: 36px;
-  background: transparent;
+  background: white;
   color: var(--text);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+@media (prefers-color-scheme: dark) {
+  input[type="text"], select, input[type="number"] {
+    background: #2c2c2f;
+    color: var(--text);
+  }
 }
 input[type="text"]:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--blue) 30%, transparent), inset 0 1px 0 rgba(0,0,0,0.03);
 }
 select:focus-visible,
 input[type="number"]:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--blue) 30%, transparent), inset 0 1px 0 rgba(0,0,0,0.03);
 }
 button {
   padding: 10px 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--blue);
   color: white;
   cursor: pointer;
   min-height: 36px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.06);
+  transition: transform 80ms ease, box-shadow 120ms ease, background 120ms ease;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 @media (hover: hover) and (pointer: fine) {
-  button:hover { background: var(--blue-hover); }
+  button:hover { background: var(--blue-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
 }
-button:active { background: var(--blue-active); }
+button:active {
+  background: var(--blue-active);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
 button:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
@@ -105,6 +140,7 @@ button:disabled {
 .help {
   font-size: 12px;
   color: var(--muted);
+  margin-top: 0;
 }
 
 #status {
@@ -127,11 +163,29 @@ button:disabled {
   * { animation: none !important; transition: none !important; }
 }
 
-@media (prefers-contrast: more) {
-  :root { --blue: #0b57d0; }
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible {
-    outline-width: 3px;
+
+/* ---- Option A layout controls styles ---- */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 10px;
+}
+.controls .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.controls .field label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+@media (max-width: 380px) {
+  .controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .controls .field:nth-child(3) {
+    grid-column: 1 / -1;
   }
 }

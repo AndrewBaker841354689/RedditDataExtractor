@@ -19,18 +19,24 @@
   <div class="row inline">
     <label><input id="downloadImages" type="checkbox" checked /> Download images</label>
   </div>
-  <div class="row inline">
-    <label for="sort">Sort</label>
-    <select id="sort">
-      <option value="top" selected>top</option>
-      <option value="best">best</option>
-      <option value="new">new</option>
-      <option value="confidence">confidence</option>
-    </select>
-    <label for="limit">Limit</label>
-    <input id="limit" type="number" min="1" max="500" value="100" />
-    <label for="depth">Depth</label>
-    <input id="depth" type="number" min="1" max="10" value="5" />
+  <div class="controls">
+    <div class="field">
+      <label for="sort">Sort</label>
+      <select id="sort">
+        <option value="top" selected>top</option>
+        <option value="best">best</option>
+        <option value="new">new</option>
+        <option value="confidence">confidence</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="limit">Limit</label>
+      <input id="limit" type="number" min="1" max="500" value="100" />
+    </div>
+    <div class="field">
+      <label for="depth">Depth</label>
+      <input id="depth" type="number" min="1" max="10" value="5" />
+    </div>
   </div>
   <div class="row inline">
     <button id="copy-prompt" type="button">Copy Prompt</button>
