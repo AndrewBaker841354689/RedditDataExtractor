@@ -9,6 +9,7 @@
   const urlInput = document.getElementById("url");
   const scrapeBtn = document.getElementById("scrapeBtn");
   const downloadImagesCb = document.getElementById("downloadImages");
+  const includeFailedImagesCb = document.getElementById("includeFailedImages"); // optional
   const statusEl = document.getElementById("status");
   const sortSel = document.getElementById("sort");          // optional
   const limitInput = document.getElementById("limit");       // optional
@@ -18,6 +19,7 @@
   const normalizeUrl = (u) => (window.normalizeUrl ? window.normalizeUrl(u) : (u || ""));
   const ensureExt = (u, f = "jpg") => (window.ensureExt ? window.ensureExt(u, f) : (u || ""));
   const isImageUrl = (u) => (window.isImageUrl ? window.isImageUrl(u) : false);
+  const pickExtForFilename = (u, f = "jpg") => (window.pickExtForFilename ? window.pickExtForFilename(u, f) : f);
 
   // Ensure we have a CORS-safe downloader even if util.js wasn't loaded first
   const downloadUrl = (typeof window !== 'undefined' && typeof window.downloadUrl === 'function')
@@ -29,7 +31,7 @@
               return reject(new Error('chrome.downloads API unavailable'));
             }
             chrome.downloads.download(
-              { url, filename, saveAs: false },
+              { url, filename, saveAs: false, conflictAction: "uniquify" },
               (downloadId) => {
                 const err = chrome.runtime.lastError;
                 if (err) return reject(err);
@@ -198,7 +200,7 @@
           if (m.e === "Image") {
             const src = m.s || {};
             const u0 = src.u || src.gif || "";
-            const u = ensureExt(normalizeUrl(u0), "jpg");
+            const u = normalizeUrl(u0); // keep original URL intact; don't append extensions
             if (u) imageUrls.push(u);
           }
         }
@@ -214,7 +216,7 @@
           const xPrev = fix(x.preview?.images?.[0]?.source?.url); if (xPrev) candidates.push(xPrev);
         }
         for (const c of candidates) {
-          const cu = ensureExt(normalizeUrl(c), "jpg");
+          const cu = normalizeUrl(c); // keep URL intact
           if (isImageUrl(cu)) { imageUrls.push(cu); break; }
         }
       }
@@ -222,8 +224,7 @@
       // Read UI options (with safe defaults if controls are not present)
       const { sort, limit, depth } = readSortLimitDepth();
 
-      // Build markdown with comments using util.js helper exposed on window
-      const md = await window.buildFullMarkdown({
+      let md = await window.buildFullMarkdown({
         title,
         subreddit,
         author,
@@ -236,25 +237,43 @@
       }, { sort, limit, depth });
 
       const base = window.sanitizeFilename(`${title}_${post.id}`.replace(/_+$/, ""));
-      await saveTextFile(`${base}.md`, md);
 
       if (downloadImagesCb?.checked && imageUrls.length) {
-        setStatus(`Downloading ${imageUrls.length} image(s)…`);
         let idx = 1;
+        let ok = 0;
+        const failed = [];
         for (const u of imageUrls) {
-          const ext = (() => {
-            try {
-              const m = new URL(u).pathname.match(/\.([a-z0-9]{2,5})$/i);
-              return m ? m[1].toLowerCase() : "jpg";
-            } catch { return "jpg"; }
-          })();
+          const ext = pickExtForFilename(u, "jpg"); // derive filename extension without changing the URL
           const fname = `${base}_images/image_${String(idx).padStart(2, "0")}.${ext}`;
-          await downloadUrl(fname, u); // uses chrome.downloads API; no CORS issues
-          idx++;
+          setStatus(`Downloading image ${idx}/${imageUrls.length}…`);
+          try {
+            await downloadUrl(fname, u); // uses chrome.downloads API; no CORS issues
+            ok++;
+          } catch (e) {
+            console.warn("Image download failed:", u, e);
+            failed.push({ url: u, err: e?.message || String(e) });
+          } finally {
+            idx++;
+          }
         }
-      }
+        if (failed.length && includeFailedImagesCb?.checked) {
+          const lines = failed.map(f => `- ${f.url} — ${f.err}`);
+          md += `\n\n## Diagnostics\n### Failed image downloads\n${lines.join("\n")}\n`;
+        }
+        // Save after optionally augmenting Markdown with failures
+        await saveTextFile(`${base}.md`, md);
 
-      setStatus(`Saved ${base}.md` + (downloadImagesCb?.checked ? ` and ${imageUrls.length} image(s).` : "."), "success");
+        if (failed.length) {
+          setStatus(`Saved ${base}.md and downloaded ${ok}/${imageUrls.length} image(s). Some failed.`, "warning");
+          console.table(failed);
+        } else {
+          setStatus(`Saved ${base}.md and ${ok} image(s).`, "success");
+        }
+      } else {
+        // No image downloads requested; save the Markdown now
+        await saveTextFile(`${base}.md`, md);
+        setStatus(`Saved ${base}.md`, "success");
+      }
     } catch (err) {
       console.error(err);
       setStatus(`Error: ${err.message || err}`, "error");

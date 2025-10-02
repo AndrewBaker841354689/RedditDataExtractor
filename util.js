@@ -309,10 +309,55 @@ function isImageUrl(url) {
   return false;
 }
 
-function ensureExt(url, fallback = "jpg") {
+function pickExtForFilename(url, fallback = "jpg") {
   try {
-    const p = new URL(url).pathname;
-    return /\.[a-z0-9]{2,5}$/i.test(p) ? url : `${url}.${fallback}`;
+    const u = new URL(url);
+    // 1) If the path already has an extension, keep it (normalize jpeg -> jpg)
+    const m = u.pathname.match(/\.([a-z0-9]{2,5})$/i);
+    if (m) {
+      let ext = m[1].toLowerCase();
+      if (ext === "jpeg") ext = "jpg";
+      return ext;
+    }
+    // 2) preview.redd.it encodes format in the query string
+    if (u.hostname.endsWith("preview.redd.it")) {
+      const fmt = (u.searchParams.get("format") || "").toLowerCase();
+      if (/^p?jpe?g$/.test(fmt)) return "jpg";
+      if (fmt === "png") return "png";
+      if (fmt === "webp") return "webp";
+      if (fmt === "gif") return "gif";
+    }
+    // 3) Default
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function ensureExt(url, fallback = "jpg") {
+  // DEPRECATED BEHAVIOR: Previously appended an extension to the URL string itself,
+  // which corrupted URLs with query strings (e.g., preview.redd.it?...format=jpg).
+  // NEW BEHAVIOR: Only append an extension to the URL when it is safe to do so:
+  //  - path has no extension
+  //  - no query string present
+  //  - host is known to serve extensionless originals (e.g., i.redd.it)
+  try {
+    const u = new URL(url);
+
+    // If the path already has an extension, return original URL unchanged
+    if (/\.[a-z0-9]{2,5}$/i.test(u.pathname)) return url;
+
+    // If there's a query string, don't mutate the URL (prevents .jpg after ?params)
+    if (u.search) return url;
+
+    // Only mutate for i.redd.it (extensionless originals are common here)
+    if (/^i\.redd\.it$/i.test(u.hostname)) {
+      u.pathname = u.pathname + "." + (fallback || "jpg");
+      return u.toString();
+    }
+
+    // For all other hosts, leave URL untouched
+    return url;
   } catch {
     return url;
   }
@@ -430,6 +475,7 @@ if (typeof window !== 'undefined') {
   window.buildExtractedMentionsSection = buildExtractedMentionsSection;
   // NEW: expose canonical helpers so popup.js doesn't redefine them
   window.isImageUrl = isImageUrl;
+  window.pickExtForFilename = pickExtForFilename;
   window.normalizeUrl = normalizeUrl;
   window.buildDiagnosticsSection = buildDiagnosticsSection;
   window.countComments = countComments;
