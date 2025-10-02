@@ -13,7 +13,6 @@
   const sortSel = document.getElementById("sort");          // optional
   const limitInput = document.getElementById("limit");       // optional
   const depthInput = document.getElementById("depth");       // optional
-  const copyPromptBtn = document.getElementById("copy-prompt"); // optional
 
   // Canonical helpers from util.js (fall back safely if util isn't loaded yet)
   const normalizeUrl = (u) => (window.normalizeUrl ? window.normalizeUrl(u) : (u || ""));
@@ -87,35 +86,54 @@
     if (tab?.url && isRedditPostUrl(tab.url)) urlInput.value = tab.url;
   } catch {}
 
-  // Copy PROMPT.md to clipboard
+  // Copy prompt to clipboard by loading PROMPT.md from the extension package (with fallback)
   async function copyPromptToClipboard() {
     try {
-      const url = chrome.runtime.getURL('PROMPT.md');
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Failed to load PROMPT.md (${res.status})`);
-      const text = await res.text();
+      // Attempt to load PROMPT.md that ships with the extension
+      let text = "";
+      try {
+        const url = chrome.runtime.getURL("PROMPT.md");
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        text = await resp.text();
+      } catch {
+        // Fallback inline template if PROMPT.md is missing or unreadable
+        text = [
+          "# Reader Instructions",
+          "",
+          "You are ingesting a Reddit export in Markdown with YAML front matter, images list, comments, and diagnostics.",
+          "Summarize key claims, extract any commands/flags/paths/configs, and note potential follow-ups.",
+          "",
+          "Output:",
+          "- Summary",
+          "- Key Links / Files / Flags",
+          "- Open Questions",
+          "- Reliability Notes",
+          ""
+        ].join("\n");
+      }
+
+      if (!text.trim()) throw new Error("PROMPT.md was empty.");
 
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        const ta = document.createElement('textarea');
+        const ta = document.createElement("textarea");
         ta.value = text;
         document.body.appendChild(ta);
         ta.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         document.body.removeChild(ta);
       }
 
-      setStatus('Prompt copied to clipboard.', 'success');
+      setStatus("Prompt copied to clipboard.", "success");
     } catch (err) {
       console.error(err);
-      setStatus(`Could not copy prompt: ${err.message}`, 'error');
+      setStatus(`Could not copy prompt: ${err.message}`, "error");
     }
   }
 
-  if (copyPromptBtn) {
-    copyPromptBtn.addEventListener('click', copyPromptToClipboard);
-  }
+  document.getElementById("copy-prompt")?.addEventListener("click", copyPromptToClipboard);
 
   function readSortLimitDepth() {
     const sort = (sortSel && typeof sortSel.value === 'string' && sortSel.value.trim()) ? sortSel.value.trim() : 'top';
